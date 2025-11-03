@@ -740,9 +740,17 @@ body {
 }
 
 .report-title {
-    font-size: 24px;
+    font-size: 48px;
     font-weight: 700;
-    color: #ff6b6b;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+/* NEW: 작은 타이틀 스타일 */
+.report-title-small {
+    font-size: 28px;
+    font-weight: 600;
+    color: #999;
     margin-bottom: 15px;
 }
 
@@ -1147,62 +1155,7 @@ body {
     background: #4caf50;
 }
 
-/* Accessibility Analysis */
-.accessibility-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-}
-
-.accessibility-card {
-    background: #f8f9fa;
-    padding: 25px;
-    border-radius: 12px;
-    border-left: 4px solid #6666ff;
-}
-
-.accessibility-card.pass {
-    border-left-color: #4caf50;
-}
-
-.accessibility-card.warning {
-    border-left-color: #ff9800;
-}
-
-.accessibility-card.fail {
-    border-left-color: #f44336;
-}
-
-.accessibility-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 10px;
-}
-
-.accessibility-score {
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 10px;
-}
-
-.accessibility-card.pass .accessibility-score {
-    color: #4caf50;
-}
-
-.accessibility-card.warning .accessibility-score {
-    color: #ff9800;
-}
-
-.accessibility-card.fail .accessibility-score {
-    color: #f44336;
-}
-
-.accessibility-desc {
-    font-size: 13px;
-    color: #666;
-    line-height: 1.6;
-}
+/* Accessibility Analysis 스타일 삭제됨 */
 
 /* ============================================
    반응형 디자인 (모바일)
@@ -1215,7 +1168,6 @@ body {
     .simulator-display,
     .font-pairing-grid,
     .color-shades-grid,
-    .accessibility-grid,
     .universal-recommendation-grid { 
         grid-template-columns: 1fr; 
         gap: 20px; 
