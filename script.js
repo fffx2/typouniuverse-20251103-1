@@ -487,7 +487,6 @@ async function generateAIReport() {
     renderColorSystem(data.colors);
     renderUniversalColorSystem(data); // NEW: 유니버설 컬러시스템 섹션
     renderComponents(data);
-    renderAccessibilityAnalysis(data);
     updateCodeOutput(data);
 
     document.getElementById('report-loading').style.display = 'none';
@@ -885,62 +884,7 @@ function generateSCSSVariables(data) {
     return scss;
 }
 
-// 접근성 분석 렌더링
-function renderAccessibilityAnalysis(data) {
-    const container = document.getElementById('accessibility-analysis');
-    container.innerHTML = '';
-
-    // Primary 색상 대비 분석
-    const primaryContrast = calculateContrast(data.colors.primary['500'], '#ffffff');
-    const primaryScore = primaryContrast >= 7 ? 'AAA' : primaryContrast >= 4.5 ? 'AA' : 'Fail';
-    const primaryClass = primaryContrast >= 7 ? 'pass' : primaryContrast >= 4.5 ? 'warning' : 'fail';
-
-    const primaryCard = document.createElement('div');
-    primaryCard.className = `accessibility-card ${primaryClass}`;
-    primaryCard.innerHTML = `
-        <div class="accessibility-title">Primary Color Contrast</div>
-        <div class="accessibility-score">${primaryScore}</div>
-        <div class="accessibility-desc">명도 대비율: ${primaryContrast.toFixed(2)}:1<br>흰색 텍스트 사용 시 ${primaryScore === 'AAA' ? '매우 우수' : primaryScore === 'AA' ? '양호' : '개선 필요'}합니다.</div>
-    `;
-    container.appendChild(primaryCard);
-
-    // Secondary 색상 대비 분석
-    const secondaryContrast = calculateContrast(data.colors.secondary['500'], '#ffffff');
-    const secondaryScore = secondaryContrast >= 7 ? 'AAA' : secondaryContrast >= 4.5 ? 'AA' : 'Fail';
-    const secondaryClass = secondaryContrast >= 7 ? 'pass' : secondaryContrast >= 4.5 ? 'warning' : 'fail';
-
-    const secondaryCard = document.createElement('div');
-    secondaryCard.className = `accessibility-card ${secondaryClass}`;
-    secondaryCard.innerHTML = `
-        <div class="accessibility-title">Secondary Color Contrast</div>
-        <div class="accessibility-score">${secondaryScore}</div>
-        <div class="accessibility-desc">명도 대비율: ${secondaryContrast.toFixed(2)}:1<br>흰색 텍스트 사용 시 ${secondaryScore === 'AAA' ? '매우 우수' : secondaryScore === 'AA' ? '양호' : '개선 필요'}합니다.</div>
-    `;
-    container.appendChild(secondaryCard);
-
-    // 폰트 가독성 분석
-    const fontCard = document.createElement('div');
-    fontCard.className = 'accessibility-card pass';
-    fontCard.innerHTML = `
-        <div class="accessibility-title">Typography Readability</div>
-        <div class="accessibility-score">✓</div>
-        <div class="accessibility-desc">${data.fonts.heading}, ${data.fonts.body}, ${data.fonts.korean}는 우수한 가독성을 제공합니다. ${data.platform} 플랫폼에 최적화되어 있습니다.</div>
-    `;
-    container.appendChild(fontCard);
-
-    // 색각 이상자 접근성 분석
-    const cbScore = checkColorBlindFriendly(data.colors.primary['500'], data.colors.secondary['500']);
-    const cbClass = cbScore >= 4.5 ? 'pass' : cbScore >= 3 ? 'warning' : 'fail';
-    
-    const colorBlindCard = document.createElement('div');
-    colorBlindCard.className = `accessibility-card ${cbClass}`;
-    colorBlindCard.innerHTML = `
-        <div class="accessibility-title">색각 이상자 접근성</div>
-        <div class="accessibility-score">${cbScore >= 4.5 ? '우수' : cbScore >= 3 ? '보통' : '주의'}</div>
-        <div class="accessibility-desc">적록색약 시각에서 명도 대비: ${cbScore.toFixed(2)}:1<br>${cbScore >= 4.5 ? '충분한 구분이 가능합니다.' : '색상 외 추가 시각적 단서를 권장합니다.'}</div>
-    `;
-    container.appendChild(colorBlindCard);
-}
+// renderAccessibilityAnalysis 함수 삭제됨
 
 // 색각 이상자 접근성 체크
 function checkColorBlindFriendly(color1, color2) {
