@@ -602,13 +602,13 @@ function renderFontPairing(fonts) {
     const koreanPreview = document.getElementById('korean-font-preview');
     
     headingPreview.style.fontFamily = `'${fonts.heading}', serif`;
-    headingPreview.textContent = 'Amazing Design';
+    headingPreview.textContent = 'Priview of heading font.';
     
     bodyPreview.style.fontFamily = `'${fonts.body}', sans-serif`;
-    bodyPreview.textContent = 'Perfect Typography';
+    bodyPreview.textContent = 'Priview of body font.';
     
     koreanPreview.style.fontFamily = `'${fonts.korean}', sans-serif`;
-    koreanPreview.textContent = '멋진 디자인';
+    koreanPreview.textContent = '한글폰트 미리보기';
     
     document.getElementById('heading-font-name').textContent = fonts.heading;
     document.getElementById('body-font-name').textContent = fonts.body;
