@@ -602,13 +602,10 @@ function renderFontPairing(fonts) {
     const koreanPreview = document.getElementById('korean-font-preview');
     
     headingPreview.style.fontFamily = `'${fonts.heading}', serif`;
-    headingPreview.textContent = 'Priview of heading font.';
+    headingPreview.textContent = 'Amazing Design';
     
     bodyPreview.style.fontFamily = `'${fonts.body}', sans-serif`;
-    bodyPreview.textContent = 'Priview of body font.';
-    
-    koreanPreview.style.fontFamily = `'${fonts.korean}', sans-serif`;
-    koreanPreview.textContent = '한글폰트 미리보기';
+    bodyPreview.textContent = 'Perfect Typography';
     
     koreanPreview.style.fontFamily = `'${fonts.korean}', sans-serif`;
     koreanPreview.textContent = '멋진 디자인';
@@ -754,11 +751,7 @@ function renderComponents(data) {
     const showcase = document.getElementById('component-showcase');
     showcase.innerHTML = '';
 
-<<<<<<< HEAD
     // 버튼 컴포넌트 (유니버설 컬러 시스템 버전 추가)
-=======
-    // 버튼 컴포넌트
->>>>>>> 1616263f7203b6dd881233ba71ff1154fa66c66f
     const buttonsSection = document.createElement('div');
     buttonsSection.className = 'component-item';
     buttonsSection.innerHTML = `
@@ -778,11 +771,7 @@ function renderComponents(data) {
     `;
     showcase.appendChild(buttonsSection);
 
-<<<<<<< HEAD
     // 카드 컴포넌트 (2단 그리드, 한글 본문, 호버 효과)
-=======
-    // 카드 컴포넌트
->>>>>>> 1616263f7203b6dd881233ba71ff1154fa66c66f
     const cardSection = document.createElement('div');
     cardSection.className = 'component-item';
     cardSection.innerHTML = `
@@ -800,11 +789,7 @@ function renderComponents(data) {
     `;
     showcase.appendChild(cardSection);
 
-<<<<<<< HEAD
     // 네비게이션 바 (Brand는 영문, 메뉴는 한글)
-=======
-    // 네비게이션 바
->>>>>>> 1616263f7203b6dd881233ba71ff1154fa66c66f
     const navSection = document.createElement('div');
     navSection.className = 'component-item';
     navSection.innerHTML = `
