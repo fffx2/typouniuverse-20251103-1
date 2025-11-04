@@ -1,32 +1,44 @@
-// ===================================================================================
-// INITIALIZATION & GLOBAL STATE
-// ===================================================================================
+// ============================================
+// 전역 상태 관리
+// - 모든 탭 간 데이터 공유를 위한 중앙 저장소
+// ============================================
 
 let appState = {
-    service: '', platform: '',
-    mood: { soft: 50, static: 50 },
-    keyword: '', primaryColor: '',
-    generatedResult: null
+    service: '',           // 서비스 목적
+    platform: '',          // OS/플랫폼
+    mood: { soft: 50, static: 50 },  // 무드 슬라이더 값
+    keyword: '',           // 선택된 키워드
+    primaryColor: '',      // 주조 색상
+    generatedResult: null, // AI 생성 결과 (색상 시스템)
+    labColors: {           // 유니버설 컬러시스템에서 설정한 색상
+        bgColor: '#F5F5F5',
+        textColor: '#333333'
+    }
 };
-let knowledgeBase = {};
-let typingTimeout;
 
-// NEW: AI Report State
-let reportData = null;
-let currentCodeTab = 'css';
+let knowledgeBase = {};  // knowledge_base.json 데이터
+let typingTimeout;       // 타이핑 효과 타이머
+let reportData = null;   // AI 리포트 데이터
+let currentCodeTab = 'css';  // 현재 선택된 코드 탭
+
+// ============================================
+// 앱 초기화
+// ============================================
 
 document.addEventListener('DOMContentLoaded', initializeApp);
 
 async function initializeApp() {
     try {
+        // knowledge_base.json 로드
         const response = await fetch('./knowledge_base.json');
         if (!response.ok) throw new Error('Network response was not ok');
         knowledgeBase = await response.json();
         
+        // 각 페이지 초기화
         setupNavigation();
         initializeMainPage();
         initializeLabPage();
-        initializeReportPage(); // NEW
+        initializeReportPage();
 
     } catch (error) {
         console.error('Failed to initialize app:', error);
@@ -34,9 +46,10 @@ async function initializeApp() {
     }
 }
 
-// ===================================================================================
-// NAVIGATION
-// ===================================================================================
+// ============================================
+// 네비게이션 관리
+// - 탭 전환 및 데이터 전달
+// ============================================
 
 function setupNavigation() {
     document.querySelectorAll('.nav-link, .interactive-button').forEach(link => {
@@ -44,31 +57,36 @@ function setupNavigation() {
             e.preventDefault();
             const targetId = e.currentTarget.dataset.target;
             
+            // 모든 페이지 숨기고 타겟만 표시
             document.querySelectorAll('.main-page, .lab-page, .report-page').forEach(page => {
                 page.classList.toggle('active', page.id === targetId);
                 page.classList.toggle('hidden', page.id !== targetId);
             });
             
+            // 네비게이션 링크 활성화 상태 업데이트
             document.querySelectorAll('.nav-link').forEach(nav => {
                 nav.classList.toggle('active', nav.dataset.target === targetId);
             });
 
-            // NEW: Generate report when navigating to report page
-            if (targetId === 'report-page' && appState.generatedResult) {
-                generateAIReport();
+            // 탭별 데이터 전달 처리
+            if (targetId === 'lab-page' && appState.generatedResult) {
+                // 메인 -> 유니버설 컬러시스템: Primary color 전달
+                const { bgColor } = appState.generatedResult;
+                updateLabPageWithData(bgColor, appState.labColors.textColor);
             }
 
-            if (targetId === 'lab-page' && appState.generatedResult) {
-                const { bgColor, textColor } = appState.generatedResult;
-                updateLabPageWithData(bgColor, textColor);
+            if (targetId === 'report-page') {
+                // 유니버설 컬러시스템 -> AI 리포트: 모든 데이터 전달
+                generateAIReport();
             }
         });
     });
 }
 
-// ===================================================================================
-// MAIN PAGE LOGIC (기존 코드 유지)
-// ===================================================================================
+// ============================================
+// 메인 페이지 (첫 번째 탭)
+// - AI 컬러시스템 추천
+// ============================================
 
 function initializeMainPage() {
     initializeDropdowns();
@@ -77,6 +95,7 @@ function initializeMainPage() {
     updateAIMessage("안녕하세요! TYPOUNIVERSE AI Design Assistant입니다. 어떤 프로젝트를 위한 디자인 가이드를 찾으시나요?");
 }
 
+// 드롭다운 메뉴 초기화
 function initializeDropdowns() {
     const services = ['포트폴리오', '브랜드 홍보', '제품 판매', '정보 전달', '학습', '엔터테인먼트'];
     const platforms = ['iOS', 'Android', 'Web', 'Desktop', 'Tablet', 'Wearable', 'VR'];
@@ -113,12 +132,14 @@ function selectOption(type, value) {
     appState[type] = value;
     toggleDropdown(type);
 
+    // 두 드롭다운 모두 선택되면 다음 단계 표시
     if (appState.service && appState.platform) {
         document.getElementById('step02').classList.remove('hidden');
         updateAIMessage("훌륭해요! 이제 서비스의 핵심 분위기를 정해볼까요? 두 개의 슬라이더를 조절하여 원하는 무드를 찾아주세요.");
     }
 }
 
+// 무드 슬라이더 초기화
 function initializeSliders() {
     const softHardSlider = document.getElementById('soft-hard-slider');
     const staticDynamicSlider = document.getElementById('static-dynamic-slider');
@@ -127,6 +148,7 @@ function initializeSliders() {
         appState.mood.soft = parseInt(softHardSlider.value);
         appState.mood.static = parseInt(staticDynamicSlider.value);
         
+        // 슬라이더를 일정 이상 움직이면 키워드 표시
         if (Math.abs(appState.mood.soft - 50) > 10 || Math.abs(appState.mood.static - 50) > 10) {
             document.getElementById('step03').classList.remove('hidden');
             renderKeywords();
@@ -137,8 +159,11 @@ function initializeSliders() {
     staticDynamicSlider.addEventListener('input', updateMoodAndKeywords);
 }
 
+// 무드에 따른 키워드 렌더링
 function renderKeywords() {
     const { soft, static: staticMood } = appState.mood;
+    
+    // 무드 값에 따라 IRI 색상 그룹 선택
     let groupKey = (soft < 40 && staticMood >= 60) ? 'group1' :
                      (soft < 40 && staticMood < 40) ? 'group2' :
                      (soft >= 60 && staticMood < 40) ? 'group3' :
@@ -155,16 +180,20 @@ function renderKeywords() {
         tag.onclick = () => selectKeyword(keyword, groupKey);
         keywordContainer.appendChild(tag);
     });
+    
     updateAIMessage(`'${description}' 분위기를 선택하셨군요. 이와 관련된 키워드들을 제안합니다.`);
 }
 
+// 키워드 선택 처리
 function selectKeyword(keyword, groupKey) {
     appState.keyword = keyword;
     
+    // 선택된 키워드 하이라이트
     document.querySelectorAll('#keyword-tags .tag').forEach(tag => {
         tag.classList.toggle('selected', tag.textContent === keyword);
     });
 
+    // 키워드에 맞는 색상 표시
     const { key_colors } = knowledgeBase.iri_colors[groupKey];
     const colorContainer = document.getElementById('color-selection');
     colorContainer.innerHTML = '';
@@ -176,25 +205,32 @@ function selectKeyword(keyword, groupKey) {
         swatch.onclick = () => selectColor(color);
         colorContainer.appendChild(swatch);
     });
+    
     document.getElementById('color-selection-wrapper').style.display = 'block';
     updateAIMessage(`'${keyword}' 키워드에 어울리는 대표 색상들입니다. 마음에 드는 주조 색상을 선택해주세요.`);
 }
 
+// 주조 색상 선택 처리
 function selectColor(color) {
     appState.primaryColor = color;
+    
+    // 선택된 색상 하이라이트
     document.querySelectorAll('.color-swatch').forEach(swatch => {
         swatch.classList.toggle('selected', swatch.style.backgroundColor.toLowerCase() === color.toLowerCase());
     });
+    
     document.getElementById('generate-btn').classList.remove('hidden');
-    updateAIMessage("좋습니다! 이제 버튼을 눌러 AI 디자인 가이드를 생성하세요.");
+    updateAIMessage("좋습니다! 이제 버튼을 눌러 AI 컬러시스템을 생성하세요.");
 }
 
+// AI 가이드 생성 (Color System만)
 async function generateGuide() {
     const btn = document.getElementById('generate-btn');
     btn.disabled = true;
     btn.innerHTML = '<span class="loading"></span> AI 가이드 생성 중...';
 
     try {
+        // Netlify 함수 호출 시도
         const response = await fetch('/.netlify/functions/generate-guide', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -204,13 +240,13 @@ async function generateGuide() {
             })
         });
 
-        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-        
+        if (!response.ok) throw new Error(`API request failed`);
         const data = await response.json();
         displayGeneratedGuide(data);
 
     } catch (error) {
         console.error('Error fetching AI guide:', error);
+        // API 실패 시 로컬 생성
         const localData = generateLocalReport();
         displayGeneratedGuide(localData);
         updateAIMessage("⚠️ AI 서버 연결에 실패하여 기본 가이드를 생성했습니다.");
@@ -221,20 +257,23 @@ async function generateGuide() {
     }
 }
 
+// 로컬 리포트 생성 (백업용)
 function generateLocalReport() {
     const primary = appState.primaryColor;
     const secondary = getComplementaryColor(primary);
-    const platformGuide = knowledgeBase.guidelines[appState.platform.toLowerCase()] || knowledgeBase.guidelines.web;
 
     return {
         colorSystem: {
-            primary: { main: primary, light: lightenColor(primary, 20), dark: darkenColor(primary, 20) },
-            secondary: { main: secondary, light: lightenColor(secondary, 20), dark: darkenColor(secondary, 20) }
-        },
-        typography: {
-            bodySize: platformGuide.typeScale.body,
-            headlineSize: platformGuide.typeScale.largeTitle || platformGuide.typeScale.headline,
-            lineHeight: platformGuide.lineHeight
+            primary: { 
+                main: primary, 
+                light: lightenColor(primary, 20), 
+                dark: darkenColor(primary, 20) 
+            },
+            secondary: { 
+                main: secondary, 
+                light: lightenColor(secondary, 20), 
+                dark: darkenColor(secondary, 20) 
+            }
         },
         accessibility: {
             textColorOnPrimary: getContrastingTextColor(primary),
@@ -243,12 +282,16 @@ function generateLocalReport() {
     };
 }
 
+// 생성된 가이드 표시 (Color System만)
 function displayGeneratedGuide(data) {
+    // appState에 결과 저장 (다른 탭으로 전달용)
     appState.generatedResult = {
         bgColor: data.colorSystem.primary.main,
-        textColor: data.accessibility.textColorOnPrimary
+        textColor: data.accessibility.textColorOnPrimary,
+        colorSystem: data.colorSystem
     };
 
+    // Color System 표시
     for (const type of ['primary', 'secondary']) {
         for (const shade of ['main', 'light', 'dark']) {
             const element = document.getElementById(`${type}-${shade}`);
@@ -258,26 +301,28 @@ function displayGeneratedGuide(data) {
             element.style.color = getContrastingTextColor(color);
         }
     }
-    
-    const platformGuide = knowledgeBase.guidelines[appState.platform.toLowerCase()] || knowledgeBase.guidelines.web;
-    document.getElementById('contrast-description').innerHTML = `Primary 색상을 배경으로 사용할 경우, WCAG AA 기준을 충족하는 텍스트 색상은 <strong>${data.accessibility.textColorOnPrimary}</strong> 이며, 대비는 <strong>${data.accessibility.contrastRatio}</strong>입니다.`;
-    document.getElementById('font-size-description').innerHTML = `<p><strong>(제목)</strong> ${platformGuide.typeScale.largeTitle || platformGuide.typeScale.headline} / <strong>(본문)</strong> ${platformGuide.typeScale.body}</p><p style="font-size: 13px; color: #555;">${platformGuide.description}</p>`;
 
     document.getElementById('ai-report').style.display = 'block';
     document.getElementById('guidelines').style.display = 'grid';
-    updateAIMessage(`${appState.platform} 플랫폼에 최적화된 디자인 가이드가 생성되었습니다!`);
+    updateAIMessage(`${appState.platform} 플랫폼에 최적화된 컬러시스템이 생성되었습니다!`);
 }
 
-// ===================================================================================
-// LAB PAGE LOGIC (기존 코드 유지)
-// ===================================================================================
+// ============================================
+// 유니버설 컬러시스템 페이지 (두 번째 탭)
+// - 명도 대비 테스트 및 색약자 시뮬레이터
+// ============================================
 
 function initializeLabPage() {
-    const inputs = ['bg-color-input', 'text-color-input', 'line-height-input', 'font-size-input'];
+    // 입력 필드 이벤트 리스너
+    const inputs = ['bg-color-input', 'text-color-input', 'line-height-input', 'font-size-input-pt'];
     inputs.forEach(id => {
-        document.getElementById(id).addEventListener('input', updateLab);
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', updateLab);
+        }
     });
     
+    // 색상 피커 이벤트 리스너
     document.getElementById('bg-color-picker').addEventListener('input', (e) => {
         document.getElementById('bg-color-input').value = e.target.value;
         updateLab();
@@ -287,17 +332,23 @@ function initializeLabPage() {
         updateLab();
     });
 
-    updateLab();
+    updateLab(); // 초기 로딩
 }
 
+// 유니버설 컬러시스템 실시간 업데이트
 function updateLab() {
     const bgColor = document.getElementById('bg-color-input').value;
     const textColor = document.getElementById('text-color-input').value;
     const lineHeight = document.getElementById('line-height-input').value;
     
+    // appState에 현재 색상 저장 (AI 리포트로 전달용)
+    appState.labColors = { bgColor, textColor };
+    
+    // 명도 대비 계산 및 표시
     const ratio = calculateContrast(bgColor, textColor);
     document.getElementById('contrast-ratio').textContent = ratio.toFixed(2) + ' : 1';
     
+    // WCAG 등급 평가
     const aaPass = ratio >= 4.5;
     const aaaPass = ratio >= 7;
     document.getElementById('aa-status').classList.toggle('pass', aaPass);
@@ -305,44 +356,59 @@ function updateLab() {
     document.getElementById('aaa-status').classList.toggle('pass', aaaPass);
     document.getElementById('aaa-status').classList.toggle('fail', !aaaPass);
 
+    // 미리보기 업데이트
     const preview = document.getElementById('text-preview');
     preview.style.backgroundColor = bgColor;
     preview.style.color = textColor;
     preview.style.lineHeight = lineHeight;
     document.getElementById('line-height-value').textContent = lineHeight;
 
-    const fontSize = document.getElementById('font-size-input').value || 16;
-    document.getElementById('pt-example').textContent = (fontSize * 0.75).toFixed(1) + 'pt';
-    document.getElementById('rem-example').textContent = (fontSize / 16).toFixed(2) + 'rem';
-    document.getElementById('sp-example').textContent = fontSize + 'sp';
+    // 플랫폼별 폰트 단위 변환 (pt 기준)
+    const fontSizePt = parseFloat(document.getElementById('font-size-input-pt').value) || 12;
+    const fontSizePx = fontSizePt * 1.333; // pt to px 변환
+    document.getElementById('px-example').textContent = fontSizePx.toFixed(1) + 'px';
+    document.getElementById('rem-example').textContent = (fontSizePx / 16).toFixed(2) + 'rem';
+    document.getElementById('sp-example').textContent = Math.round(fontSizePx) + 'sp';
 
+    // 색약자 시뮬레이터 업데이트
     updateSimulator(bgColor, textColor);
 }
 
+// 색약자 시뮬레이터 업데이트
 function updateSimulator(bgColor, textColor) {
+    // 색상을 적록색약 시뮬레이션으로 변환
     const simBg = daltonizeColor(bgColor);
     const simText = daltonizeColor(textColor);
 
+    // 일반 시각 표시
     updatePaletteItem(document.getElementById('origBg'), bgColor, "주조색상");
     updatePaletteItem(document.getElementById('origText'), textColor, "보조색상");
+    
+    // 적록색약 시각 표시
     updatePaletteItem(document.getElementById('simBg'), simBg, "주조색상");
     updatePaletteItem(document.getElementById('simText'), simText, "보조색상");
 
+    // 명도 대비 계산
     const origRatio = calculateContrast(bgColor, textColor);
     const simRatio = calculateContrast(simBg, simText);
     
+    // AI 솔루션 텍스트 생성
     const getStatusText = (ratio, type) => {
         let grade = (ratio >= 7) ? 'AAA등급 충족' : (ratio >= 4.5) ? 'AA등급 충족' : '기준 미달';
         return (ratio >= 4.5) ?
             `<p style="color:#2e7d32;">✅ 양호: ${type}, 명도대비율 <strong>${ratio.toFixed(2)}:1</strong>, ${grade}입니다.</p>` :
             `<p style="color:#d32f2f;">⚠️ 주의: ${type}, 명도대비율 <strong>${ratio.toFixed(2)}:1</strong>로 낮아져 구분이 어려울 수 있습니다.</p>`;
     };
+    
     let solutionHTML = getStatusText(origRatio, '일반 시각') + getStatusText(simRatio, '적록색약 시각');
+    
     if (simRatio < 4.5) {
         solutionHTML += `<p style="margin-top:10px; font-size: 14px;">명도 차이를 더 확보하거나, 색상 외 다른 시각적 단서(아이콘, 굵기 등) 사용을 권장합니다.</p>`;
     }
+    
     document.getElementById('solution-text').innerHTML = solutionHTML;
 
+    // 명도 대비 예시 박스 업데이트
     const origExampleBox = document.getElementById('orig-contrast-example');
     let origExampleGrade = (origRatio >= 7) ? ' AAA' : (origRatio >= 4.5) ? ' AA' : '';
     origExampleBox.style.backgroundColor = bgColor;
@@ -355,6 +421,7 @@ function updateSimulator(bgColor, textColor) {
     simExampleBox.querySelector('.ratio-display').textContent = `${simRatio.toFixed(2)}:1`;
 }
 
+// 팔레트 아이템 업데이트
 function updatePaletteItem(element, color, label) {
     element.style.background = color;
     element.querySelector('.hex-code-sim').textContent = color;
@@ -362,35 +429,21 @@ function updatePaletteItem(element, color, label) {
     element.style.color = getContrastingTextColor(color);
 }
 
+// 메인 페이지에서 데이터 받아오기
 function updateLabPageWithData(bgColor, textColor) {
     document.getElementById('bg-color-input').value = bgColor;
+    document.getElementById('bg-color-picker').value = bgColor;
     document.getElementById('text-color-input').value = textColor;
+    document.getElementById('text-color-picker').value = textColor;
     updateLab();
 }
 
-function updateAIMessage(message) {
-    const el = document.getElementById('ai-message');
-    clearTimeout(typingTimeout);
-    let i = 0;
-    el.innerHTML = '';
-    function typeWriter() {
-        if (i < message.length) {
-            el.innerHTML = message.substring(0, i + 1) + '<span class="typing-cursor">|</span>';
-            i++;
-            typingTimeout = setTimeout(typeWriter, 25);
-        } else {
-            el.querySelector('.typing-cursor')?.remove();
-        }
-    }
-    typeWriter();
-}
-
-// ===================================================================================
-// NEW: AI DESIGN REPORT PAGE LOGIC
-// ===================================================================================
+// ============================================
+// AI 디자인 리포트 페이지 (세 번째 탭)
+// ============================================
 
 function initializeReportPage() {
-    // Code export tab switching
+    // 코드 탭 전환
     document.querySelectorAll('.export-tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
             document.querySelectorAll('.export-tab').forEach(t => t.classList.remove('active'));
@@ -402,7 +455,7 @@ function initializeReportPage() {
         });
     });
 
-    // Copy code button
+    // 코드 복사 버튼
     document.getElementById('copy-code-btn').addEventListener('click', () => {
         const code = document.getElementById('code-output').textContent;
         navigator.clipboard.writeText(code).then(() => {
@@ -417,37 +470,41 @@ function initializeReportPage() {
     });
 }
 
+// AI 리포트 생성
 async function generateAIReport() {
     document.getElementById('report-loading').style.display = 'block';
     document.getElementById('report-content').style.display = 'none';
 
-    // Simulate AI processing
+    // AI 처리 시뮬레이션
     await new Promise(resolve => setTimeout(resolve, 1500));
 
     const data = await generateCompleteDesignSystem();
     reportData = data;
 
+    // 각 섹션 렌더링
     renderFontPairing(data.fonts);
+    renderTypographyReport(data);
     renderColorSystem(data.colors);
+    renderUniversalColorSystem(data); // NEW: 유니버설 컬러시스템 섹션
     renderComponents(data);
-    renderAccessibilityAnalysis(data);
     updateCodeOutput(data);
 
     document.getElementById('report-loading').style.display = 'none';
     document.getElementById('report-content').style.display = 'block';
 }
 
+// 완전한 디자인 시스템 생성
 async function generateCompleteDesignSystem() {
-    const primary = appState.primaryColor;
+    const primary = appState.primaryColor || appState.labColors.bgColor;
     const secondary = getComplementaryColor(primary);
 
-    // Generate font pairing based on mood and service
+    // 폰트 추천 (한글 폰트 포함)
     const fonts = getRecommendedFonts(appState.service, appState.keyword, appState.mood);
     
-    // Load Google Fonts dynamically
-    await loadGoogleFonts([fonts.heading, fonts.body]);
+    // Google Fonts 동적 로드
+    await loadGoogleFonts([fonts.heading, fonts.body, fonts.korean]);
 
-    // Generate complete color shades
+    // 완전한 색상 팔레트 생성 (50-900)
     const colors = {
         primary: generateColorShades(primary),
         secondary: generateColorShades(secondary)
@@ -458,60 +515,70 @@ async function generateCompleteDesignSystem() {
         colors,
         service: appState.service,
         platform: appState.platform,
-        keyword: appState.keyword
+        keyword: appState.keyword,
+        labColors: appState.labColors
     };
 }
 
+// 폰트 추천 로직 (한글 폰트 포함)
 function getRecommendedFonts(service, keyword, mood) {
-    // AI-like font recommendation logic
     const fontDatabase = {
         '포트폴리오': {
             heading: ['Playfair Display', 'Libre Baskerville', 'Cormorant Garamond'],
-            body: ['Inter', 'Work Sans', 'Lato']
+            body: ['Inter', 'Work Sans', 'Lato'],
+            korean: ['Noto Serif KR', 'Nanum Myeongjo', 'Gowun Batang']
         },
         '브랜드 홍보': {
             heading: ['Montserrat', 'Raleway', 'Poppins'],
-            body: ['Open Sans', 'Roboto', 'Nunito']
+            body: ['Open Sans', 'Roboto', 'Nunito'],
+            korean: ['Noto Sans KR', 'Nanum Gothic', 'Spoqa Han Sans Neo']
         },
         '제품 판매': {
             heading: ['Oswald', 'Anton', 'Bebas Neue'],
-            body: ['Roboto', 'Source Sans Pro', 'PT Sans']
+            body: ['Roboto', 'Source Sans Pro', 'PT Sans'],
+            korean: ['Black Han Sans', 'Jua', 'Do Hyeon']
         },
         '정보 전달': {
             heading: ['Roboto Slab', 'Merriweather', 'Source Serif Pro'],
-            body: ['Noto Sans', 'IBM Plex Sans', 'Lato']
+            body: ['Noto Sans', 'IBM Plex Sans', 'Lato'],
+            korean: ['Noto Sans KR', 'Nanum Gothic', 'Malgun Gothic']
         },
         '학습': {
             heading: ['Bitter', 'Arvo', 'Crimson Text'],
-            body: ['Lora', 'Merriweather', 'PT Serif']
+            body: ['Lora', 'Merriweather', 'PT Serif'],
+            korean: ['Nanum Myeongjo', 'Noto Serif KR', 'Gowun Batang']
         },
         '엔터테인먼트': {
             heading: ['Fredoka One', 'Righteous', 'Bungee'],
-            body: ['Quicksand', 'Comfortaa', 'Varela Round']
+            body: ['Quicksand', 'Comfortaa', 'Varela Round'],
+            korean: ['Jua', 'Gamja Flower', 'Hi Melody']
         }
     };
 
     const serviceCategory = fontDatabase[service] || fontDatabase['포트폴리오'];
     const headingFont = serviceCategory.heading[Math.floor(Math.random() * serviceCategory.heading.length)];
     const bodyFont = serviceCategory.body[Math.floor(Math.random() * serviceCategory.body.length)];
+    const koreanFont = serviceCategory.korean[Math.floor(Math.random() * serviceCategory.korean.length)];
 
     return {
         heading: headingFont,
         body: bodyFont,
-        reasoning: `${service} 서비스에 최적화된 폰트 조합입니다. ${headingFont}은 강렬하고 인상적인 제목을 만들고, ${bodyFont}는 가독성이 뛰어난 본문을 제공합니다. '${keyword}' 키워드와 잘 어울립니다.`
+        korean: koreanFont,
+        reasoning: `${service} 서비스에 최적화된 폰트 조합입니다. ${headingFont}은 강렬하고 인상적인 제목을 만들고, ${bodyFont}는 가독성이 뛰어난 본문을 제공합니다. 한글 폰트로는 ${koreanFont}를 추천하며, '${keyword}' 키워드와 잘 어울립니다.`
     };
 }
 
+// Google Fonts 동적 로드
 async function loadGoogleFonts(fontNames) {
     const link = document.createElement('link');
     link.href = `https://fonts.googleapis.com/css2?family=${fontNames.map(f => f.replace(/ /g, '+')).join('&family=')}&display=swap`;
     link.rel = 'stylesheet';
     document.head.appendChild(link);
     
-    // Wait for fonts to load
     await new Promise(resolve => setTimeout(resolve, 500));
 }
 
+// 색상 Shades 생성 (50-900)
 function generateColorShades(baseColor) {
     const shades = {};
     const percentages = [90, 70, 50, 30, 10, 0, -15, -30, -45];
@@ -528,9 +595,11 @@ function generateColorShades(baseColor) {
     return shades;
 }
 
+// 폰트 페어링 렌더링 (한글 포함)
 function renderFontPairing(fonts) {
     const headingPreview = document.getElementById('heading-font-preview');
     const bodyPreview = document.getElementById('body-font-preview');
+    const koreanPreview = document.getElementById('korean-font-preview');
     
     headingPreview.style.fontFamily = `'${fonts.heading}', serif`;
     headingPreview.textContent = 'Amazing Design';
@@ -538,13 +607,35 @@ function renderFontPairing(fonts) {
     bodyPreview.style.fontFamily = `'${fonts.body}', sans-serif`;
     bodyPreview.textContent = 'Perfect Typography';
     
+    koreanPreview.style.fontFamily = `'${fonts.korean}', sans-serif`;
+    koreanPreview.textContent = '멋진 디자인';
+    
     document.getElementById('heading-font-name').textContent = fonts.heading;
     document.getElementById('body-font-name').textContent = fonts.body;
+    document.getElementById('korean-font-name').textContent = fonts.korean;
+    
     document.getElementById('heading-font-link').href = `https://fonts.google.com/specimen/${fonts.heading.replace(/ /g, '+')}`;
     document.getElementById('body-font-link').href = `https://fonts.google.com/specimen/${fonts.body.replace(/ /g, '+')}`;
+    document.getElementById('korean-font-link').href = `https://fonts.google.com/specimen/${fonts.korean.replace(/ /g, '+')}`;
+    
     document.getElementById('font-reasoning').textContent = fonts.reasoning;
 }
 
+// Typography 리포트 렌더링 (메인에서 이동)
+function renderTypographyReport(data) {
+    const platformGuide = knowledgeBase.guidelines[appState.platform.toLowerCase()] || knowledgeBase.guidelines.web;
+    const primaryColor = data.colors.primary['500'];
+    const textColor = getContrastingTextColor(primaryColor);
+    const contrastRatio = calculateContrast(primaryColor, textColor).toFixed(2);
+    
+    document.getElementById('contrast-description-report').innerHTML = 
+        `Primary 색상을 배경으로 사용할 경우, WCAG AA 기준을 충족하는 텍스트 색상은 <strong>${textColor}</strong> 이며, 대비는 <strong>${contrastRatio}:1</strong>입니다.`;
+    
+    document.getElementById('font-size-description-report').innerHTML = 
+        `<p><strong>(제목)</strong> ${platformGuide.typeScale.largeTitle || platformGuide.typeScale.headline} / <strong>(본문)</strong> ${platformGuide.typeScale.body}</p><p style="font-size: 13px; color: #555;">${platformGuide.description}</p>`;
+}
+
+// 색상 시스템 렌더링
 function renderColorSystem(colors) {
     const primaryContainer = document.getElementById('primary-shades');
     const secondaryContainer = document.getElementById('secondary-shades');
@@ -562,7 +653,7 @@ function renderColorSystem(colors) {
         secondaryContainer.appendChild(box);
     });
 
-    // Color usage guide
+    // 색상 사용 가이드
     const usageList = document.getElementById('color-usage-list');
     usageList.innerHTML = `
         <li><strong>Primary-500:</strong> 버튼, 링크, 주요 액션</li>
@@ -585,11 +676,82 @@ function createShadeBox(shade, color) {
     return box;
 }
 
+// NEW: 유니버설 컬러시스템 최적화 렌더링
+function renderUniversalColorSystem(data) {
+    const { bgColor, textColor } = appState.labColors;
+    
+    // 일반 시각 최적화
+    const normalBgOptimal = bgColor;
+    const normalTextOptimal = textColor;
+    const normalRatio = calculateContrast(normalBgOptimal, normalTextOptimal);
+    
+    // 일반 시각 표시
+    const normalBgBox = document.getElementById('normal-bg-optimal');
+    normalBgBox.style.backgroundColor = normalBgOptimal;
+    normalBgBox.style.color = getContrastingTextColor(normalBgOptimal);
+    normalBgBox.querySelector('.optimal-hex').textContent = normalBgOptimal;
+    
+    const normalTextBox = document.getElementById('normal-text-optimal');
+    normalTextBox.style.backgroundColor = normalTextOptimal;
+    normalTextBox.style.color = getContrastingTextColor(normalTextOptimal);
+    normalTextBox.querySelector('.optimal-hex').textContent = normalTextOptimal;
+    
+    const normalPreview = document.getElementById('normal-preview');
+    normalPreview.style.backgroundColor = normalBgOptimal;
+    normalPreview.style.color = normalTextOptimal;
+    normalPreview.querySelector('.optimal-ratio').textContent = `${normalRatio.toFixed(2)}:1`;
+    
+    // 색각 이상자 시각 최적화
+    const colorblindBgOptimal = optimizeForColorblind(bgColor);
+    const colorblindTextOptimal = optimizeForColorblind(textColor);
+    const colorblindRatio = calculateContrast(colorblindBgOptimal, colorblindTextOptimal);
+    
+    // 색각 이상자 시각 표시
+    const colorblindBgBox = document.getElementById('colorblind-bg-optimal');
+    colorblindBgBox.style.backgroundColor = colorblindBgOptimal;
+    colorblindBgBox.style.color = getContrastingTextColor(colorblindBgOptimal);
+    colorblindBgBox.querySelector('.optimal-hex').textContent = colorblindBgOptimal;
+    
+    const colorblindTextBox = document.getElementById('colorblind-text-optimal');
+    colorblindTextBox.style.backgroundColor = colorblindTextOptimal;
+    colorblindTextBox.style.color = getContrastingTextColor(colorblindTextOptimal);
+    colorblindTextBox.querySelector('.optimal-hex').textContent = colorblindTextOptimal;
+    
+    const colorblindPreview = document.getElementById('colorblind-preview');
+    colorblindPreview.style.backgroundColor = colorblindBgOptimal;
+    colorblindPreview.style.color = colorblindTextOptimal;
+    colorblindPreview.querySelector('.optimal-ratio').textContent = `${colorblindRatio.toFixed(2)}:1`;
+    
+    // AI 추천 이유
+    let reasoning = `일반 시각에서는 명도 대비 ${normalRatio.toFixed(2)}:1로 `;
+    reasoning += normalRatio >= 7 ? 'AAA 등급을 충족합니다. ' : normalRatio >= 4.5 ? 'AA 등급을 충족합니다. ' : '개선이 필요합니다. ';
+    reasoning += `적록색약 시각에서는 명도 대비 ${colorblindRatio.toFixed(2)}:1로 `;
+    reasoning += colorblindRatio >= 4.5 ? '충분한 구분이 가능합니다.' : '색상 외 추가 시각적 단서를 권장합니다.';
+    
+    document.getElementById('universal-reasoning').textContent = reasoning;
+}
+
+// 색각 이상자를 위한 색상 최적화 (명도 차이 강화)
+function optimizeForColorblind(color) {
+    const rgb = hexToRgb(color);
+    if (!rgb) return color;
+    
+    const luminance = getLuminance(color);
+    
+    // 명도가 낮으면 더 어둡게, 높으면 더 밝게 조정
+    if (luminance < 0.5) {
+        return darkenColor(color, 10);
+    } else {
+        return lightenColor(color, 10);
+    }
+}
+
+// 컴포넌트 프리뷰 렌더링
 function renderComponents(data) {
     const showcase = document.getElementById('component-showcase');
     showcase.innerHTML = '';
 
-    // Buttons
+    // 버튼 컴포넌트 (유니버설 컬러 시스템 버전 추가)
     const buttonsSection = document.createElement('div');
     buttonsSection.className = 'component-item';
     buttonsSection.innerHTML = `
@@ -599,38 +761,52 @@ function renderComponents(data) {
             <button class="demo-btn" style="background: ${data.colors.secondary['500']}; color: ${getContrastingTextColor(data.colors.secondary['500'])}; font-family: '${data.fonts.body}', sans-serif;">Secondary Button</button>
             <button class="demo-btn" style="background: transparent; border: 2px solid ${data.colors.primary['500']}; color: ${data.colors.primary['500']}; font-family: '${data.fonts.body}', sans-serif;">Outline Button</button>
         </div>
+        <div style="margin-top: 20px;">
+            <div style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 600;">유니버설 컬러 시스템 적용 버전</div>
+            <div class="demo-buttons">
+                <button class="demo-btn" style="background: ${data.labColors.bgColor}; color: ${data.labColors.textColor}; font-family: '${data.fonts.body}', sans-serif;">Universal Primary</button>
+                <button class="demo-btn" style="background: ${optimizeForColorblind(data.labColors.bgColor)}; color: ${optimizeForColorblind(data.labColors.textColor)}; font-family: '${data.fonts.body}', sans-serif;">Universal Secondary</button>
+            </div>
+        </div>
     `;
     showcase.appendChild(buttonsSection);
 
-    // Card
+    // 카드 컴포넌트 (2단 그리드, 한글 본문, 호버 효과)
     const cardSection = document.createElement('div');
     cardSection.className = 'component-item';
     cardSection.innerHTML = `
         <div class="component-label">Card Component</div>
-        <div class="demo-card" style="border-left: 4px solid ${data.colors.primary['500']}; font-family: '${data.fonts.body}', sans-serif;">
-            <h4 style="font-family: '${data.fonts.heading}', serif; color: ${data.colors.primary['700']};">Card Title</h4>
-            <p>This is an example card component with your design system applied. Perfect for content sections, product listings, or feature highlights.</p>
+        <div class="demo-card-grid">
+            <div class="demo-card demo-card-hover" style="border-left: 4px solid ${data.colors.primary['500']}; font-family: '${data.fonts.korean}', sans-serif;">
+                <h4 style="font-family: '${data.fonts.heading}', serif; color: ${data.colors.primary['700']};">Premium Design</h4>
+                <p>프리미엄 디자인 시스템을 적용한 카드 컴포넌트입니다. 제품 소개, 서비스 설명, 또는 주요 기능을 강조하는데 활용할 수 있습니다.</p>
+            </div>
+            <div class="demo-card demo-card-hover-secondary" style="border-left: 4px solid ${data.colors.secondary['500']}; font-family: '${data.fonts.korean}', sans-serif;">
+                <h4 style="font-family: '${data.fonts.heading}', serif; color: ${data.colors.secondary['700']};">Secondary Card</h4>
+                <p>보조 색상을 활용한 카드 디자인으로, 주조 색상과 조화를 이루며 계층 구조를 명확하게 전달합니다. 서브 콘텐츠에 적합합니다.</p>
+            </div>
         </div>
     `;
     showcase.appendChild(cardSection);
 
-    // Navigation
+    // 네비게이션 바 (Brand는 영문, 메뉴는 한글)
     const navSection = document.createElement('div');
     navSection.className = 'component-item';
     navSection.innerHTML = `
         <div class="component-label">Navigation Bar</div>
-        <div class="demo-navbar" style="font-family: '${data.fonts.body}', sans-serif;">
+        <div class="demo-navbar" style="font-family: '${data.fonts.korean}', sans-serif;">
             <div class="demo-nav-logo" style="color: ${data.colors.primary['500']}; font-family: '${data.fonts.heading}', serif;">Brand</div>
             <div class="demo-nav-links">
-                <a href="#" style="color: ${data.colors.primary['700']};">Home</a>
-                <a href="#" style="color: ${data.colors.primary['700']};">About</a>
-                <a href="#" style="color: ${data.colors.primary['700']};">Contact</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">홈</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">소개</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">문의</a>
             </div>
         </div>
     `;
     showcase.appendChild(navSection);
 }
 
+// 코드 출력 업데이트
 function updateCodeOutput(data) {
     let code = '';
     
@@ -645,6 +821,7 @@ function updateCodeOutput(data) {
     document.getElementById('code-output').textContent = code;
 }
 
+// CSS Variables 생성
 function generateCSSVariables(data) {
     let css = ':root {\n';
     css += '  /* Primary Colors */\n';
@@ -658,6 +835,7 @@ function generateCSSVariables(data) {
     css += '\n  /* Typography */\n';
     css += `  --font-heading: '${data.fonts.heading}', serif;\n`;
     css += `  --font-body: '${data.fonts.body}', sans-serif;\n`;
+    css += `  --font-korean: '${data.fonts.korean}', sans-serif;\n`;
     css += '}\n\n';
     css += '/* Usage Example */\n';
     css += '.button-primary {\n';
@@ -668,6 +846,7 @@ function generateCSSVariables(data) {
     return css;
 }
 
+// Tailwind Config 생성
 function generateTailwindConfig(data) {
     let config = 'module.exports = {\n';
     config += '  theme: {\n';
@@ -687,6 +866,7 @@ function generateTailwindConfig(data) {
     config += '      fontFamily: {\n';
     config += `        heading: ['${data.fonts.heading}', 'serif'],\n`;
     config += `        body: ['${data.fonts.body}', 'sans-serif'],\n`;
+    config += `        korean: ['${data.fonts.korean}', 'sans-serif'],\n`;
     config += '      },\n';
     config += '    },\n';
     config += '  },\n';
@@ -694,6 +874,7 @@ function generateTailwindConfig(data) {
     return config;
 }
 
+// SCSS Variables 생성
 function generateSCSSVariables(data) {
     let scss = '// Primary Colors\n';
     Object.entries(data.colors.primary).forEach(([shade, color]) => {
@@ -705,7 +886,8 @@ function generateSCSSVariables(data) {
     });
     scss += '\n// Typography\n';
     scss += `$font-heading: '${data.fonts.heading}', serif;\n`;
-    scss += `$font-body: '${data.fonts.body}', sans-serif;\n\n`;
+    scss += `$font-body: '${data.fonts.body}', sans-serif;\n`;
+    scss += `$font-korean: '${data.fonts.korean}', sans-serif;\n\n`;
     scss += '// Usage Example\n';
     scss += '.button-primary {\n';
     scss += '  background: $primary-500;\n';
@@ -715,73 +897,42 @@ function generateSCSSVariables(data) {
     return scss;
 }
 
-function renderAccessibilityAnalysis(data) {
-    const container = document.getElementById('accessibility-analysis');
-    container.innerHTML = '';
+// renderAccessibilityAnalysis 함수 삭제됨
 
-    // Check primary contrast
-    const primaryContrast = calculateContrast(data.colors.primary['500'], '#ffffff');
-    const primaryScore = primaryContrast >= 7 ? 'AAA' : primaryContrast >= 4.5 ? 'AA' : 'Fail';
-    const primaryClass = primaryContrast >= 7 ? 'pass' : primaryContrast >= 4.5 ? 'warning' : 'fail';
-
-    const primaryCard = document.createElement('div');
-    primaryCard.className = `accessibility-card ${primaryClass}`;
-    primaryCard.innerHTML = `
-        <div class="accessibility-title">Primary Color Contrast</div>
-        <div class="accessibility-score">${primaryScore}</div>
-        <div class="accessibility-desc">명도 대비율: ${primaryContrast.toFixed(2)}:1<br>흰색 텍스트 사용 시 ${primaryScore === 'AAA' ? '매우 우수' : primaryScore === 'AA' ? '양호' : '개선 필요'}합니다.</div>
-    `;
-    container.appendChild(primaryCard);
-
-    // Check secondary contrast
-    const secondaryContrast = calculateContrast(data.colors.secondary['500'], '#ffffff');
-    const secondaryScore = secondaryContrast >= 7 ? 'AAA' : secondaryContrast >= 4.5 ? 'AA' : 'Fail';
-    const secondaryClass = secondaryContrast >= 7 ? 'pass' : secondaryContrast >= 4.5 ? 'warning' : 'fail';
-
-    const secondaryCard = document.createElement('div');
-    secondaryCard.className = `accessibility-card ${secondaryClass}`;
-    secondaryCard.innerHTML = `
-        <div class="accessibility-title">Secondary Color Contrast</div>
-        <div class="accessibility-score">${secondaryScore}</div>
-        <div class="accessibility-desc">명도 대비율: ${secondaryContrast.toFixed(2)}:1<br>흰색 텍스트 사용 시 ${secondaryScore === 'AAA' ? '매우 우수' : secondaryScore === 'AA' ? '양호' : '개선 필요'}합니다.</div>
-    `;
-    container.appendChild(secondaryCard);
-
-    // Font readability
-    const fontCard = document.createElement('div');
-    fontCard.className = 'accessibility-card pass';
-    fontCard.innerHTML = `
-        <div class="accessibility-title">Typography Readability</div>
-        <div class="accessibility-score">✓</div>
-        <div class="accessibility-desc">${data.fonts.heading}과 ${data.fonts.body}는 우수한 가독성을 제공합니다. ${data.platform} 플랫폼에 최적화되어 있습니다.</div>
-    `;
-    container.appendChild(fontCard);
-
-    // Color blind friendly
-    const colorBlindCard = document.createElement('div');
-    const cbScore = checkColorBlindFriendly(data.colors.primary['500'], data.colors.secondary['500']);
-    const cbClass = cbScore >= 4.5 ? 'pass' : cbScore >= 3 ? 'warning' : 'fail';
-    
-    const colorBlindCardEl = document.createElement('div');
-    colorBlindCardEl.className = `accessibility-card ${cbClass}`;
-    colorBlindCardEl.innerHTML = `
-        <div class="accessibility-title">색각 이상자 접근성</div>
-        <div class="accessibility-score">${cbScore >= 4.5 ? '우수' : cbScore >= 3 ? '보통' : '주의'}</div>
-        <div class="accessibility-desc">적록색약 시각에서 명도 대비: ${cbScore.toFixed(2)}:1<br>${cbScore >= 4.5 ? '충분한 구분이 가능합니다.' : '색상 외 추가 시각적 단서를 권장합니다.'}</div>
-    `;
-    container.appendChild(colorBlindCardEl);
-}
-
+// 색각 이상자 접근성 체크
 function checkColorBlindFriendly(color1, color2) {
     const daltonized1 = daltonizeColor(color1);
     const daltonized2 = daltonizeColor(color2);
     return calculateContrast(daltonized1, daltonized2);
 }
 
-// ===================================================================================
-// Helper Functions (기존 코드 유지)
-// ===================================================================================
+// ============================================
+// AI 메시지 타이핑 효과
+// ============================================
 
+function updateAIMessage(message) {
+    const el = document.getElementById('ai-message');
+    clearTimeout(typingTimeout);
+    let i = 0;
+    el.innerHTML = '';
+    
+    function typeWriter() {
+        if (i < message.length) {
+            el.innerHTML = message.substring(0, i + 1) + '<span class="typing-cursor">|</span>';
+            i++;
+            typingTimeout = setTimeout(typeWriter, 25);
+        } else {
+            el.querySelector('.typing-cursor')?.remove();
+        }
+    }
+    typeWriter();
+}
+
+// ============================================
+// 색상 유틸리티 함수들
+// ============================================
+
+// 대조되는 텍스트 색상 반환 (검정/흰색)
 function getContrastingTextColor(hex) {
     if (!hex || hex.length < 4) return '#000000';
     const rgb = hexToRgb(hex);
@@ -790,12 +941,14 @@ function getContrastingTextColor(hex) {
     return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }
 
+// 명도 대비 계산 (WCAG 기준)
 function calculateContrast(hex1, hex2) {
     const lum1 = getLuminance(hex1);
     const lum2 = getLuminance(hex2);
     return (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
 }
 
+// 휘도(Luminance) 계산
 function getLuminance(hex) {
     const rgb = hexToRgb(hex);
     if (!rgb) return 0;
@@ -806,6 +959,7 @@ function getLuminance(hex) {
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
+// HEX를 RGB로 변환
 function hexToRgb(hex) {
     hex = hex.replace(/^#/, '');
     if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
@@ -814,6 +968,7 @@ function hexToRgb(hex) {
     return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
 }
 
+// 적록색약 시뮬레이션 (Daltonize)
 function daltonizeColor(hex) {
     const rgb = hexToRgb(hex);
     if (!rgb) return '#000000';
@@ -825,24 +980,37 @@ function daltonizeColor(hex) {
     return `#${toHex(simR)}${toHex(simG)}${toHex(simB)}`;
 }
 
+// 색상 밝게 만들기
 function lightenColor(color, percent) {
-    const num = parseInt(color.slice(1), 16), amt = Math.round(2.55 * percent), R = (num >> 16) + amt, G = (num >> 8 & 0x00FF) + amt, B = (num & 0x0000FF) + amt;
+    const num = parseInt(color.slice(1), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
     return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 + (G<255?G<1?0:G:255)*0x100 + (B<255?B<1?0:B:255)).toString(16).slice(1);
 }
 
+// 색상 어둡게 만들기
 function darkenColor(color, percent) {
-    const num = parseInt(color.slice(1), 16), amt = Math.round(2.55 * percent), R = (num >> 16) - amt, G = (num >> 8 & 0x00FF) - amt, B = (num & 0x0000FF) - amt;
+    const num = parseInt(color.slice(1), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
     return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 + (G<255?G<1?0:G:255)*0x100 + (B<255?B<1?0:B:255)).toString(16).slice(1);
 }
 
+// 보색 계산
 function getComplementaryColor(hex){
     const rgb = hexToRgb(hex);
     if (!rgb) return '#000000';
     let r = rgb.r / 255, g = rgb.g / 255, b = rgb.b / 255;
     let max = Math.max(r, g, b), min = Math.min(r, g, b);
     let h, s, l = (max + min) / 2;
-    if (max == min) { h = s = 0; }
-    else {
+    
+    if (max == min) { 
+        h = s = 0; 
+    } else {
         let d = max - min;
         s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
         switch (max) {
@@ -852,12 +1020,16 @@ function getComplementaryColor(hex){
         }
         h /= 6;
     }
+    
     h = (h + 0.5) % 1;
     let r1, g1, b1;
-    if (s == 0) { r1 = g1 = b1 = l; }
-    else {
+    
+    if (s == 0) { 
+        r1 = g1 = b1 = l; 
+    } else {
         const hue2rgb = (p, q, t) => {
-            if (t < 0) t += 1; if (t > 1) t -= 1;
+            if (t < 0) t += 1; 
+            if (t > 1) t -= 1;
             if (t < 1/6) return p + (q - p) * 6 * t;
             if (t < 1/2) return q;
             if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
@@ -869,6 +1041,7 @@ function getComplementaryColor(hex){
         g1 = hue2rgb(p, q, h);
         b1 = hue2rgb(p, q, h - 1/3);
     }
+    
     const toHex = x => ('0' + Math.round(x * 255).toString(16)).slice(-2);
     return `#${toHex(r1)}${toHex(g1)}${toHex(b1)}`;
 }
