@@ -751,7 +751,7 @@ function renderComponents(data) {
     const showcase = document.getElementById('component-showcase');
     showcase.innerHTML = '';
 
-    // 버튼 컴포넌트 (유니버설 컬러 시스템 버전 추가)
+    // 버튼 컴포넌트 (유니버설 컬러 시스템 버전 추가 + 아웃라인 호버 효과)
     const buttonsSection = document.createElement('div');
     buttonsSection.className = 'component-item';
     buttonsSection.innerHTML = `
@@ -759,7 +759,7 @@ function renderComponents(data) {
         <div class="demo-buttons">
             <button class="demo-btn" style="background: ${data.colors.primary['500']}; color: ${getContrastingTextColor(data.colors.primary['500'])}; font-family: '${data.fonts.body}', sans-serif;">Primary Button</button>
             <button class="demo-btn" style="background: ${data.colors.secondary['500']}; color: ${getContrastingTextColor(data.colors.secondary['500'])}; font-family: '${data.fonts.body}', sans-serif;">Secondary Button</button>
-            <button class="demo-btn" style="background: transparent; border: 2px solid ${data.colors.primary['500']}; color: ${data.colors.primary['500']}; font-family: '${data.fonts.body}', sans-serif;">Outline Button</button>
+            <button class="demo-btn demo-btn-outline" style="background: transparent; border: 2px solid ${data.colors.primary['500']}; color: ${data.colors.primary['500']}; font-family: '${data.fonts.body}', sans-serif;" data-primary="${data.colors.primary['500']}" data-secondary="${data.colors.secondary['500']}">Outline Button</button>
         </div>
         <div style="margin-top: 20px;">
             <div style="font-size: 13px; color: #666; margin-bottom: 10px; font-weight: 600;">유니버설 컬러 시스템 적용 버전</div>
@@ -770,6 +770,22 @@ function renderComponents(data) {
         </div>
     `;
     showcase.appendChild(buttonsSection);
+    
+    // 아웃라인 버튼 호버 효과
+    setTimeout(() => {
+        document.querySelectorAll('.demo-btn-outline').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                this.style.background = this.dataset.primary;
+                this.style.color = 'white';
+                this.style.borderColor = this.dataset.primary;
+            });
+            btn.addEventListener('mouseleave', function() {
+                this.style.background = 'transparent';
+                this.style.color = this.dataset.primary;
+                this.style.borderColor = this.dataset.primary;
+            });
+        });
+    }, 100);
 
     // 카드 컴포넌트 (2단 그리드, 한글 본문, 호버 효과)
     const cardSection = document.createElement('div');
@@ -789,17 +805,31 @@ function renderComponents(data) {
     `;
     showcase.appendChild(cardSection);
 
-    // 네비게이션 바 (Brand는 영문, 메뉴는 한글)
+    // 네비게이션 바 (라이트모드 + 다크모드)
     const navSection = document.createElement('div');
     navSection.className = 'component-item';
     navSection.innerHTML = `
-        <div class="component-label">Navigation Bar</div>
-        <div class="demo-navbar" style="font-family: '${data.fonts.korean}', sans-serif;">
+        <div class="component-label">Navigation Bar - Light Mode</div>
+        <div class="demo-navbar" style="font-family: '${data.fonts.korean}', sans-serif; background: white;">
             <div class="demo-nav-logo" style="color: ${data.colors.primary['500']}; font-family: '${data.fonts.heading}', serif;">Brand</div>
             <div class="demo-nav-links">
                 <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">홈</a>
-                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">소개</a>
-                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">문의</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">서비스 소개</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">핵심기능</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">포트폴리오</a>
+                <a href="#" style="color: ${data.colors.primary['700']}; font-family: '${data.fonts.korean}', sans-serif;">Q&A</a>
+            </div>
+        </div>
+        
+        <div class="component-label" style="margin-top: 25px;">Navigation Bar - Dark Mode</div>
+        <div class="demo-navbar demo-navbar-dark" style="font-family: '${data.fonts.korean}', sans-serif; background: #1a1a1a;">
+            <div class="demo-nav-logo" style="color: ${data.colors.primary['300']}; font-family: '${data.fonts.heading}', serif;">Brand</div>
+            <div class="demo-nav-links">
+                <a href="#" style="color: #e0e0e0; font-family: '${data.fonts.korean}', sans-serif;">홈</a>
+                <a href="#" style="color: #e0e0e0; font-family: '${data.fonts.korean}', sans-serif;">서비스 소개</a>
+                <a href="#" style="color: #e0e0e0; font-family: '${data.fonts.korean}', sans-serif;">핵심기능</a>
+                <a href="#" style="color: #e0e0e0; font-family: '${data.fonts.korean}', sans-serif;">포트폴리오</a>
+                <a href="#" style="color: #e0e0e0; font-family: '${data.fonts.korean}', sans-serif;">Q&A</a>
             </div>
         </div>
     `;
