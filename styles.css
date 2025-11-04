@@ -1046,22 +1046,23 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-/* 카드 그리드 (3단) */
+/* 카드 그리드 (2단 - 화면 가득 채우기) */
 .demo-card-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 25px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
     margin-bottom: 20px;
     width: 100%;
 }
 
 .demo-card {
     background: white;
-    padding: 25px;
+    padding: 30px;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     cursor: pointer;
-    min-height: 200px;
+    min-height: 220px;
+    width: 100%;
     /* 모든 속성에 transition 적용 */
     transition: all 0.3s ease, 
                 background 0.3s ease, 
